@@ -44,7 +44,13 @@ Across a 1-year benchmark simulation on `5ZoneAirCooled.idf`:
 
 ## 🎥 Demo Video & Visual Dashboards
 
-> 🎬 **[Watch BuildMind 3-Minute Hackathon Demo Video](https://drive.google.com/file/d/1KOMYTi1UxVpKjpPigrWxuynFg2IXnWiX/view?usp=sharing)**
+<p align="center">
+  <a href="https://drive.google.com/file/d/1KOMYTi1UxVpKjpPigrWxuynFg2IXnWiX/view?usp=sharing">
+    <img src="docs/video_thumbnail.png" alt="Watch BuildMind Demo Video" width="70%"/>
+  </a>
+  <br/>
+  <b>🎬 Click the thumbnail above to watch the full 3-minute demo video</b>
+</p>
 
 <table align="center">
   <tr>
