@@ -1,14 +1,3 @@
-"""
-dashboard/app.py — Streamlit dashboard for BuildMind Autonomous BEMS.
-
-Shows a live, side-by-side comparison of:
-  • Baseline HVAC energy consumption
-  • AI-optimised HVAC energy consumption
-  • PMV & Occupancy dynamics
-  • Smart LLM trigger breakdown & Safety Validator status
-  • LLM decision log with reasoning, confidence, and trigger source
-"""
-
 import sys
 from pathlib import Path
 import streamlit as st
@@ -19,20 +8,12 @@ import plotly.express as px
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.config import BASELINE_CSV, AI_CSV, ZONES
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Page config
-# ─────────────────────────────────────────────────────────────────────────────
-
 st.set_page_config(
     page_title="BuildMind — Autonomous BEMS",
     page_icon="🏢",
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Custom CSS
-# ─────────────────────────────────────────────────────────────────────────────
 
 st.markdown("""
 <style>
@@ -43,7 +24,6 @@ st.markdown("""
     .main { background: #0d1117; color: #e6edf3; }
     .block-container { padding-top: 1.5rem; }
 
-    /* Header banner */
     .hero-banner {
         background: linear-gradient(135deg, #1a1f2e 0%, #0d1b4b 50%, #1a1f2e 100%);
         border: 1px solid #30363d;
@@ -55,7 +35,6 @@ st.markdown("""
     .hero-banner h1 { font-size: 2rem; font-weight: 700; color: #58a6ff; margin: 0; }
     .hero-banner p  { color: #8b949e; margin: 0.25rem 0 0; }
 
-    /* Metric cards */
     .metric-card {
         background: #161b22;
         border: 1px solid #30363d;
@@ -72,7 +51,6 @@ st.markdown("""
     .metric-info    { color: #58a6ff; }
     .metric-neutral { color: #e6edf3; }
 
-    /* Section headings */
     .section-title {
         font-size: 1rem; font-weight: 600;
         color: #8b949e; text-transform: uppercase;
@@ -80,7 +58,6 @@ st.markdown("""
         border-bottom: 1px solid #21262d; padding-bottom: 0.4rem;
     }
 
-    /* Decision log rows */
     .log-row {
         background: #161b22;
         border-left: 3px solid #388bfd;
@@ -92,7 +69,6 @@ st.markdown("""
     .log-row .step  { color: #58a6ff; font-weight: 600; }
     .log-row .reason{ color: #c9d1d9; margin-top: 0.3rem; font-style: italic; }
 
-    /* Status badges */
     .badge-trigger { background: #1f293d; color: #79c0ff; border: 1px solid #388bfd; padding: 0.1rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
     .badge-safety-ok { background: #1f4429; color: #3fb950; border: 1px solid #238636; padding: 0.1rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
     .badge-safety-fix { background: #3d2f1f; color: #d29922; border: 1px solid #9e6a03; padding: 0.1rem 0.5rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
@@ -102,20 +78,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Hero Banner
-# ─────────────────────────────────────────────────────────────────────────────
-
 st.markdown("""
 <div class="hero-banner">
   <h1>🏢 BuildMind Autonomous BEMS</h1>
   <p>Autonomous HVAC Optimization via LangGraph + LLaMA 3.1 (Groq) + EnergyPlus</p>
 </div>
 """, unsafe_allow_html=True)
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Sidebar
-# ─────────────────────────────────────────────────────────────────────────────
 
 with st.sidebar:
     st.markdown("## ⚙️ Dashboard Settings")
@@ -140,16 +108,12 @@ if auto_refresh:
     _time.sleep(refresh_sec)
     st.rerun()
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Load data
-# ─────────────────────────────────────────────────────────────────────────────
-
 @st.cache_data(ttl=10)
 def load_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame()
     df = pd.read_csv(path)
-    df["hvac_kwh"] = df["hvac_electricity_w"] * 900 / 3_600_000  # per-timestep kWh
+    df["hvac_kwh"] = df["hvac_electricity_w"] * 900 / 3_600_000
     df["hvac_kwh_cumul"] = df["hvac_kwh"].cumsum()
     return df
 
@@ -170,10 +134,6 @@ if not has_baseline and not has_ai:
     )
     st.stop()
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Helper: chart layout defaults
-# ─────────────────────────────────────────────────────────────────────────────
-
 CHART_LAYOUT = dict(
     paper_bgcolor="#0d1117",
     plot_bgcolor="#161b22",
@@ -186,10 +146,6 @@ CHART_LAYOUT = dict(
     xaxis=dict(gridcolor="#21262d", linecolor="#30363d"),
     yaxis=dict(gridcolor="#21262d", linecolor="#30363d"),
 )
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Summary Metrics
-# ─────────────────────────────────────────────────────────────────────────────
 
 st.markdown('<p class="section-title">📊 Energy Savings & System Summary</p>', unsafe_allow_html=True)
 
@@ -237,10 +193,6 @@ if has_baseline and has_ai:
           <div class="label">LLM Calls (Smart Trigger)</div>
         </div>""", unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Energy & Power Demand Charts
-# ─────────────────────────────────────────────────────────────────────────────
-
 col_e1, col_e2 = st.columns(2)
 
 with col_e1:
@@ -254,7 +206,7 @@ with col_e1:
     if has_ai:
         fig_energy.add_trace(go.Scatter(
             x=df_ai["sim_time_hours"], y=df_ai["hvac_kwh_cumul"],
-            name="AI-Controlled (Eco-Loop)", line=dict(color="#3fb950", width=2.5),
+            name="AI-Controlled (BuildMind)", line=dict(color="#3fb950", width=2.5),
             fill="tonexty" if has_baseline else None,
             fillcolor="rgba(63,185,80,0.08)",
         ))
@@ -284,10 +236,6 @@ with col_e2:
         st.plotly_chart(fig_trig, use_container_width=True)
     else:
         st.info("No trigger reason data available.")
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Zone Temperature & PMV / Occupancy Context
-# ─────────────────────────────────────────────────────────────────────────────
 
 st.markdown(f'<p class="section-title">🌡️ Thermal Comfort & PMV Dynamics — {selected_zone}</p>', unsafe_allow_html=True)
 
@@ -354,10 +302,6 @@ with col_right:
     else:
         st.info("PMV or Occupancy data not present.")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# LLM Decision Log with Safety Validator & Confidence
-# ─────────────────────────────────────────────────────────────────────────────
-
 if has_ai and "llm_called" in df_ai.columns:
     st.markdown('<p class="section-title">🧠 LLM Decision & Safety Validator Log</p>', unsafe_allow_html=True)
 
@@ -395,15 +339,11 @@ if has_ai and "llm_called" in df_ai.columns:
             </div>
             """, unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Architecture diagram (for judges)
-# ─────────────────────────────────────────────────────────────────────────────
-
 with st.expander("🏗️ Production-Grade System Architecture", expanded=False):
     st.markdown("""
     ```
     ┌─────────────────────────────────────────────────────────────────────────┐
-    │              ECO-LOOP INDUSTRIAL CLOSED-LOOP PIPELINE                  │
+    │             BUILDMIND INDUSTRIAL CLOSED-LOOP PIPELINE                  │
     │                                                                         │
     │  EnergyPlus 5ZoneAirCooled.idf                                         │
     │         │ (Zone Air Temp, Electricity:HVAC meter, Outdoor Drybulb)      │
@@ -437,4 +377,4 @@ with st.expander("🏗️ Production-Grade System Architecture", expanded=False)
     **Safety Guarantee:** Dual-stage Pydantic + Safety Validator node enforces deadbands and rate-limits  
     """)
 
-st.caption("© 2026 Eco-Loop Team — Honeywell Campus Hackathon")
+st.caption("© 2026 BuildMind Team — Honeywell Campus Hackathon")
