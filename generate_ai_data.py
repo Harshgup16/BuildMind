@@ -72,14 +72,11 @@ def ai_setpoints(outdoor_temp, zone_temps, occupancy, pmv, hour_of_day,
         ph  = prev_heat.get(z, DEFAULT_HEATING_SP)
         pc  = prev_cool.get(z, DEFAULT_COOLING_SP)
 
-        # Base strategy from outdoor temp
         if outdoor_temp > 30 or forecast_2h > 32:
-            # Very hot / forecast hot → pre-cool
             h_sp, c_sp = 19.0, 23.0
         elif outdoor_temp > 25:
             h_sp, c_sp = 19.5, 24.0
         elif outdoor_temp > 18:
-            # Mild → widen deadband max
             h_sp, c_sp = 19.0, 25.5
         elif outdoor_temp > 10:
             h_sp, c_sp = 20.0, 25.0
@@ -90,30 +87,23 @@ def ai_setpoints(outdoor_temp, zone_temps, occupancy, pmv, hour_of_day,
         else:
             h_sp, c_sp = 22.0, 26.5
 
-        # Occupancy-based: empty zones → aggressively widen deadband
         if occ == 0:
             h_sp = max(18.0, h_sp - 1.0)
             c_sp = min(28.0, c_sp + 1.0)
-
-        # PMV correction
         if p > 1.0:
-            c_sp = max(22.0, c_sp - 0.5)   # zone is warm, cool more
+            c_sp = max(22.0, c_sp - 0.5) 
         elif p < -1.0:
-            h_sp = min(23.0, h_sp + 0.5)   # zone is cold, heat more
+            h_sp = min(23.0, h_sp + 0.5) 
 
-        # Night setback (11pm–6am) when unoccupied
         if (hour_of_day >= 23 or hour_of_day < 6) and occ == 0:
             h_sp = max(18.0, h_sp - 0.5)
 
-        # Rate limit: ±1°C from previous
         h_sp = max(ph - 1.0, min(ph + 1.0, h_sp))
         c_sp = max(pc - 1.0, min(pc + 1.0, c_sp))
 
-        # Safety: absolute bounds
         h_sp = max(18.0, min(23.0, h_sp))
         c_sp = max(22.0, min(28.0, c_sp))
 
-        # Safety: deadband >= 2°C
         if c_sp - h_sp < 2.0:
             c_sp = h_sp + 2.0
             c_sp = min(28.0, c_sp)
@@ -124,7 +114,6 @@ def ai_setpoints(outdoor_temp, zone_temps, occupancy, pmv, hour_of_day,
     return new_heat, new_cool
 
 
-# ── Main generation loop ──────────────────────────────────────────────────────
 ai_df = df.copy()
 heat_cols = {z: f"heat_sp_{z}" for z in ZONES}
 cool_cols = {z: f"cool_sp_{z}" for z in ZONES}
@@ -151,10 +140,8 @@ for i, row in df.iterrows():
     hour_day = hour_sim % 24
     ts       = int(row["timestep"])
 
-    # Zone temps
     zone_temps = {z: row.get(f"temp_{z}", avg_t) for z in ZONES}
 
-    # Outdoor history + forecast
     outdoor_history.append(out_t)
     if len(outdoor_history) > 8:
         outdoor_history.pop(0)
@@ -163,14 +150,12 @@ for i, row in df.iterrows():
     forecast_1h_col.append(f1h)
     forecast_2h_col.append(f2h)
 
-    # Occupancy + PMV
     occ = compute_occupancy(hour_day)
     pmv = compute_pmv(zone_temps, out_t, occ)
     for z in ZONES:
         occ_cols[z].append(occ[z])
         pmv_cols[z].append(pmv[z])
 
-    # Smart trigger
     comfort_violations = int(row["comfort_violations"])
     temp_changed = abs(out_t - last_llm_outdoor_temp) > OUTDOOR_TEMP_TRIGGER_DELTA
     periodic     = (ts % LLM_CALL_INTERVAL == 0)
@@ -193,8 +178,6 @@ for i, row in df.iterrows():
             out_t, zone_temps, occ, pmv, hour_day,
             f1h, f2h, prev_heat, prev_cool
         )
-
-        # Confidence: lower on extreme conditions
         if comfort_violations > 0 or out_t > 35 or out_t < 0:
             conf = 0.80
         elif abs(out_t - 20) > 10:
@@ -202,7 +185,6 @@ for i, row in df.iterrows():
         else:
             conf = 0.95
 
-        # Safety check simulated
         safety_ok  = True
         violations = []
         for z in ZONES:
@@ -211,7 +193,6 @@ for i, row in df.iterrows():
                 new_cool[z] = new_heat[z] + 2.0
                 safety_ok = False
 
-        # Reasoning
         total_occ = sum(occ.values())
         if out_t > 30 or f2h > 32:
             reason = f"Pre-cooling all zones (outdoor {out_t:.1f}C, 2h forecast {f2h:.1f}C). {total_occ} occupants present."
@@ -238,7 +219,6 @@ for i, row in df.iterrows():
         safety_passed_col.append(safety_ok)
         reasoning_col.append(reason)
     else:
-        # Hold previous setpoints
         for z in ZONES:
             ai_df.at[i, heat_cols[z]] = round(prev_heat[z], 2)
             ai_df.at[i, cool_cols[z]] = round(prev_cool[z], 2)
@@ -246,7 +226,6 @@ for i, row in df.iterrows():
         safety_passed_col.append(True)
         reasoning_col.append("")
 
-# ── Add new columns ───────────────────────────────────────────────────────────
 ai_df["llm_called"]          = llm_called_col
 ai_df["llm_trigger_reason"]  = trigger_reason_col
 ai_df["confidence"]          = confidence_col
@@ -255,7 +234,6 @@ ai_df["reasoning"]           = reasoning_col
 ai_df["forecast_temp_1h"]    = forecast_1h_col
 ai_df["forecast_temp_2h"]    = forecast_2h_col
 
-# Avg PMV and total occupancy columns
 avg_pmv_col   = []
 total_occ_col = []
 for i in range(len(ai_df)):
@@ -271,7 +249,6 @@ for z in ZONES:
     ai_df[f"occ_{z}"] = occ_cols[z]
     ai_df[f"pmv_{z}"] = pmv_cols[z]
 
-# ── Simulate energy savings ───────────────────────────────────────────────────
 for i, row in ai_df.iterrows():
     out_t = row["outdoor_temp"]
     hour  = row["sim_time_hours"] % 24
@@ -293,17 +270,13 @@ for i, row in ai_df.iterrows():
     ai_df.at[i, "hvac_electricity_w"]  = round(max(0, row["hvac_electricity_w"]  * (1 - reduction)), 1)
     ai_df.at[i, "total_electricity_w"] = round(max(0, row["total_electricity_w"] * (1 - reduction * 0.4)), 1)
 
-# ── Recompute comfort violations ──────────────────────────────────────────────
 def count_violations(row):
     return sum(1 for z in ZONES if row.get(f"temp_{z}", 22.0) < 20.0 or row.get(f"temp_{z}", 22.0) > 26.0)
 
 ai_df["comfort_violations"] = ai_df.apply(count_violations, axis=1)
-
-# ── Save ──────────────────────────────────────────────────────────────────────
 AI_CSV.parent.mkdir(parents=True, exist_ok=True)
 ai_df.to_csv(AI_CSV, index=False)
 
-# ── Summary ──────────────────────────────────────────────────────────────────
 TIMESTEP_S    = 900
 base_kwh      = (df["hvac_electricity_w"] * TIMESTEP_S / 3_600_000).sum()
 ai_kwh        = (ai_df["hvac_electricity_w"] * TIMESTEP_S / 3_600_000).sum()

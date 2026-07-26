@@ -11,13 +11,11 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 from mcp.server.fastmcp import FastMCP
 
-# Initialize FastMCP Server
 mcp = FastMCP(
     "EcoLoopBuildingAgent",
     instructions="Standardized MCP Tool Server for EnergyPlus HVAC Closed-Loop Optimization"
 )
 
-# Global runtime state buffer (populated by EnergyPlus callback wrapper)
 _CURRENT_BUILDING_STATE: Dict[str, Any] = {}
 _LAST_SETPOINTS: Dict[str, Dict[str, float]] = {}
 _SIMULATION_ERR_PATH: Path = Path(__file__).parent.parent / "eplusout.err"
@@ -27,11 +25,6 @@ def update_mcp_state(building_state_dict: Dict[str, Any]) -> None:
     """Helper used by EnergyPlusWrapper to update the MCP server's state buffer."""
     global _CURRENT_BUILDING_STATE
     _CURRENT_BUILDING_STATE = building_state_dict
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# MCP Tools
-# ─────────────────────────────────────────────────────────────────────────────
 
 @mcp.tool()
 def get_building_telemetry() -> str:
@@ -63,7 +56,6 @@ def set_zone_setpoints(
         heating_setpoint: Target heating setpoint in °C
         cooling_setpoint: Target cooling setpoint in °C
     """
-    # Hard safety boundary verification
     clamped_heating = max(18.0, min(24.0, heating_setpoint))
     clamped_cooling = max(clamped_heating + 2.0, min(28.0, cooling_setpoint))
     
@@ -133,10 +125,6 @@ def parse_simulation_diagnostics() -> str:
     except Exception as e:
         return json.dumps({"status": "error", "message": str(e)})
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Stdio Server Entrypoint
-# ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")

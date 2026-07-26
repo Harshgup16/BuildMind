@@ -219,10 +219,6 @@ class EnergyPlusWrapper:
                 f"Viol: {building_state.comfort_violations}"
             )
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # Smart LLM trigger
-    # ─────────────────────────────────────────────────────────────────────────
-
     def _should_call_llm(self, state: BuildingState) -> tuple[bool, str]:
         """
         Decide whether to invoke the LLM this timestep.
@@ -242,10 +238,6 @@ class EnergyPlusWrapper:
             return True, "periodic"
 
         return False, ""
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # Feature engineering
-    # ─────────────────────────────────────────────────────────────────────────
 
     def _enrich_state(self, state: BuildingState) -> BuildingState:
         """
@@ -307,15 +299,9 @@ class EnergyPlusWrapper:
             "zone_temps_prev":      dict(self._last_llm_zone_temps),
         })
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # Handle initialisation
-    # ─────────────────────────────────────────────────────────────────────────
-
     def _init_handles(self, state):
         ex = self.api.exchange
 
-        # ── Variable (sensor) handles ─────────────────────────────────────────
-        # Correct EnergyPlus v26 variable name: 'Zone Air Temperature' (HVAC timestep)
         for zone in ZONES:
             h = ex.get_variable_handle(state, "Zone Air Temperature", zone)
             if h == -1:
@@ -345,10 +331,6 @@ class EnergyPlusWrapper:
 
         self._handles_ready = True
         print(f"[Wrapper] Handles initialised. Zones: {ZONES}")
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # Sensor reading
-    # ─────────────────────────────────────────────────────────────────────────
 
     def _read_sensors(self, state) -> BuildingState:
         ex = self.api.exchange
@@ -382,10 +364,6 @@ class EnergyPlusWrapper:
             cooling_setpoints   = dict(self._cooling_sps),
         )
 
-    # ─────────────────────────────────────────────────────────────────────────
-    # Actuator writing
-    # ─────────────────────────────────────────────────────────────────────────
-
     def _apply_setpoints(self, state):
         ex = self.api.exchange
         for zone in ZONES:
@@ -395,10 +373,6 @@ class EnergyPlusWrapper:
                 ex.set_actuator_value(state, h_heat, self._heating_sps[zone])
             if h_cool != -1:
                 ex.set_actuator_value(state, h_cool, self._cooling_sps[zone])
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # Fallback control (rule-based, used if LLM fails)
-    # ─────────────────────────────────────────────────────────────────────────
 
     def _fallback_decision(self, state: BuildingState) -> LLMDecision:
         """
@@ -425,10 +399,6 @@ class EnergyPlusWrapper:
             reasoning="Fallback rule-based control (LLM unavailable).",
             confidence=0.5,
         )
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # Summary
-    # ─────────────────────────────────────────────────────────────────────────
 
     def _print_summary(self):
         total_kwh = self.total_energy_j / 3_600_000

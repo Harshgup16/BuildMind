@@ -13,11 +13,9 @@ temp_handle = None
 def callback(state):
     global temp_handle
 
-    # Wait until API data is available
     if not api.exchange.api_data_fully_ready(state):
         return
 
-    # Get handle only once
     if temp_handle is None:
         temp_handle = api.exchange.get_variable_handle(
             state,

@@ -41,10 +41,6 @@ from src.config import (
 from src.schemas import BuildingState, LLMDecision, SafetyReport
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Agent State
-# ─────────────────────────────────────────────────────────────────────────────
-
 class AgentState(TypedDict):
     building_state:  BuildingState
     prev_decision:   Optional[LLMDecision]
@@ -53,10 +49,6 @@ class AgentState(TypedDict):
     safety_report:   Optional[SafetyReport] # result of safety validator
     error:           str                    # error message if LLM failed
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# System prompt — crafted once, cached
-# ─────────────────────────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = """\
 You are an expert HVAC optimization AI for a 5-zone commercial office building.
@@ -103,10 +95,6 @@ RESPONSE FORMAT — RETURN ONLY THIS JSON, NO MARKDOWN, NO TEXT OUTSIDE JSON:
 )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# LLM singleton
-# ─────────────────────────────────────────────────────────────────────────────
-
 def _build_llm() -> ChatGroq:
     api_key = GROQ_API_KEY or os.getenv("GROQ_API_KEY", "")
     if not api_key:
@@ -130,17 +118,10 @@ def get_llm() -> ChatGroq:
         _llm = _build_llm()
     return _llm
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Prompt builder
-# ─────────────────────────────────────────────────────────────────────────────
-
 def _build_human_message(bs: BuildingState, prev: Optional[LLMDecision]) -> str:
     """Build the rich human message with occupancy, PMV, forecast, and delta."""
 
     hour_of_day = bs.sim_time_hours % 24
-
-    # ── Zone table ────────────────────────────────────────────────────────────
     zone_lines = []
     for z in ZONES:
         t     = bs.zone_temps.get(z, 0)
@@ -162,7 +143,6 @@ def _build_human_message(bs: BuildingState, prev: Optional[LLMDecision]) -> str:
             f"[heat={h_sp:.1f}, cool={c_sp:.1f}] {'!VIOLATION!' if not ok else 'OK'}"
         )
 
-    # ── Previous decision ─────────────────────────────────────────────────────
     prev_section = ""
     if prev:
         prev_section = (
@@ -173,7 +153,6 @@ def _build_human_message(bs: BuildingState, prev: Optional[LLMDecision]) -> str:
             f"  Confidence: {prev.confidence:.2f}"
         )
 
-    # ── Forecast section ──────────────────────────────────────────────────────
     t_trend = bs.outdoor_temp - bs.outdoor_temp_prev if bs.outdoor_temp_prev else 0.0
     forecast_section = (
         f"\nWEATHER FORECAST:\n"
@@ -200,11 +179,6 @@ ZONE DETAILS:
 Provide optimal setpoints for all 5 zones. Return ONLY the JSON object.
 """
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Graph Node functions
-# ─────────────────────────────────────────────────────────────────────────────
-
 def analyze_state(state: AgentState) -> AgentState:
     """Pass-through — enrichment already done in EnergyPlusWrapper._enrich_state()."""
     return state
@@ -229,19 +203,16 @@ def call_llm(state: AgentState) -> AgentState:
                 HumanMessage(content=human_msg),
             ])
             raw = response.content.strip()
-            # Strip markdown code fences if present
             if raw.startswith("```"):
                 raw = raw.split("```")[1]
                 if raw.startswith("json"):
                     raw = raw[4:]
             raw = raw.strip()
-            # Quick validity check — must parse as JSON
             json.loads(raw)
             return {**state, "llm_raw": raw, "error": ""}
         except json.JSONDecodeError as exc:
             last_error = f"attempt {attempt+1}: bad JSON — {exc}"
             if attempt < LLM_MAX_RETRIES - 1:
-                # Retry with a tighter reminder
                 human_msg += "\n\nIMPORTANT: Your previous response was not valid JSON. Return ONLY the JSON object, nothing else."
         except Exception as exc:
             return {**state, "llm_raw": "", "error": str(exc)}
@@ -256,13 +227,11 @@ def validate_and_clip(state: AgentState) -> AgentState:
     Also enforces MAX_SETPOINT_DELTA rate limit from previous decision.
     """
     if state.get("error") or not state.get("llm_raw"):
-        return state  # route to fallback
+        return state
 
     try:
         raw_dict = json.loads(state["llm_raw"])
         decision = LLMDecision(**raw_dict)
-
-        # Rate-limit: enforce ±MAX_SETPOINT_DELTA from previous decision
         prev = state.get("prev_decision")
         if prev:
             for zone in ZONES:
@@ -305,17 +274,13 @@ def safety_validator(state: AgentState) -> AgentState:
     for zone in ZONES:
         h = decision.heating_setpoints.get(zone, DEFAULT_HEATING_SP)
         c = decision.cooling_setpoints.get(zone, DEFAULT_COOLING_SP)
-
-        # Check deadband
         if c - h < MIN_DEADBAND:
             violations.append(f"deadband too narrow in {zone}: {c:.1f}-{h:.1f}={c-h:.1f}°C")
-            # Fix: push cooling up to maintain deadband
             new_c = h + MIN_DEADBAND
             new_c = min(new_c, COOLING_SP_MAX)
             clamped[f"cool_{zone}"] = c
             decision.cooling_setpoints[zone] = round(new_c, 2)
 
-        # Re-check bounds (Pydantic already clamped, but double-check after deadband fix)
         h2 = decision.heating_setpoints.get(zone, DEFAULT_HEATING_SP)
         c2 = decision.cooling_setpoints.get(zone, DEFAULT_COOLING_SP)
         if not (HEATING_SP_MIN <= h2 <= HEATING_SP_MAX):
@@ -372,10 +337,6 @@ def safety_passed_or_fallback(state: AgentState) -> str:
     return "end"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Build the LangGraph
-# ─────────────────────────────────────────────────────────────────────────────
-
 def build_agent_graph():
     graph = StateGraph(AgentState)
 
@@ -397,11 +358,6 @@ def build_agent_graph():
     graph.add_edge("fallback_control", END)
 
     return graph.compile()
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Public callable used by EnergyPlusWrapper
-# ─────────────────────────────────────────────────────────────────────────────
 
 _graph = None
 

@@ -20,55 +20,44 @@ class BuildingState(BaseModel):
     timestep: int = Field(..., description="EnergyPlus internal timestep counter")
     sim_time_hours: float = Field(..., description="Simulated elapsed hours")
 
-    # Per-zone temperatures (°C)
     zone_temps: dict[str, float] = Field(..., description="Zone Air Temperature per zone")
     zone_temps_prev: dict[str, float] = Field(
         default_factory=dict,
         description="Zone temps from previous LLM-call timestep (for delta context)"
     )
 
-    # Outdoor conditions
     outdoor_temp: float = Field(..., description="Site Outdoor Air Drybulb Temperature (°C)")
     outdoor_temp_prev: float = Field(
         default=0.0,
         description="Outdoor temp at last LLM call (for delta trigger)"
     )
 
-    # Approximate weather forecast (extrapolated from recent trend)
     forecast_temp_1h: float = Field(default=0.0, description="Estimated outdoor temp in 1 sim-hour (°C)")
     forecast_temp_2h: float = Field(default=0.0, description="Estimated outdoor temp in 2 sim-hours (°C)")
 
-    # Energy
     hvac_electricity_w: float = Field(..., description="HVAC Electricity Demand Rate (W)")
     total_electricity_w: float = Field(..., description="Total Electricity Demand Rate (W)")
 
-    # Current HVAC setpoints (what EnergyPlus is currently using)
     heating_setpoints: dict[str, float] = Field(default_factory=dict)
     cooling_setpoints: dict[str, float] = Field(default_factory=dict)
 
-    # Occupancy (schedule-based approximation: people per zone)
     occupancy: dict[str, int] = Field(
         default_factory=dict,
         description="Estimated number of occupants per zone (schedule-based)"
     )
 
-    # PMV — Predicted Mean Vote (−3 cold … 0 neutral … +3 hot)
     pmv: dict[str, float] = Field(
         default_factory=dict,
         description="Predicted Mean Vote per zone (formula-approximated)"
     )
 
-    # Why was the LLM called this timestep?
     llm_trigger_reason: str = Field(
         default="",
         description="comfort_violation | outdoor_temp_change | periodic"
     )
 
-    # ── Computed properties ──────────────────────────────────────────────────
-
     @property
     def zones_in_comfort(self) -> dict[str, bool]:
-        """Returns per-zone True/False whether temp is within 20–26°C."""
         from src.config import COMFORT_HEATING_MIN, COMFORT_COOLING_MAX
         return {
             z: COMFORT_HEATING_MIN <= t <= COMFORT_COOLING_MAX
@@ -175,5 +164,4 @@ class TimestepRecord(BaseModel):
     safety_passed: bool = True
     reasoning: str = ""
 
-    # Per-zone flattened fields will be added dynamically
     model_config = {"extra": "allow"}
