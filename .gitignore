@@ -1,0 +1,20 @@
+# Environment
+venv/
+.env
+*.pyc
+__pycache__/
+
+# EnergyPlus simulation outputs
+eplusout.*
+eplustbl.*
+epluspsz.*
+eplusssz.*
+epluszsz.*
+
+# Output data
+output/*.csv
+
+# Streamlit / IDE
+.streamlit/
+.vscode/
+.idea/
