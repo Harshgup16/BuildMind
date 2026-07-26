@@ -60,6 +60,10 @@ Across a 1-year benchmark simulation on `5ZoneAirCooled.idf`:
 
 ## 🏗️ System Architecture
 
+<p align="center">
+  <img src="docs/architecture.png" alt="BuildMind System Architecture" width="100%"/>
+</p>
+
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │                               MODEL CONTEXT PROTOCOL (MCP)                              │
