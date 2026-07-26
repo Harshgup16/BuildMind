@@ -30,12 +30,10 @@ def callback(state):
             print("Variable not found!")
             return
 
-    # Read temperature every timestep
     temp = api.exchange.get_variable_value(state, temp_handle)
     print(f"Temperature: {temp:.2f} °C")
 
 
-# Register callback
 api.runtime.callback_end_zone_timestep_after_zone_reporting(
     state,
     callback
