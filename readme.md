@@ -6,6 +6,7 @@
 [![LangGraph](https://img.shields.io/badge/LangGraph-Agentic_Control-FF6F61?style=for-the-badge)](https://langchain.com)
 [![MCP Protocol](https://img.shields.io/badge/MCP-Model_Context_Protocol-6B46C1?style=for-the-badge)](https://modelcontextprotocol.io)
 [![Groq LLaMA 3.1](https://img.shields.io/badge/Groq-LLaMA--3.1--8B-F05032?style=for-the-badge)](https://groq.com)
+[![Watch Demo Video](https://img.shields.io/badge/🎥_Watch-Demo_Video-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://drive.google.com/file/d/1KOMYTi1UxVpKjpPigrWxuynFg2IXnWiX/view?usp=sharing)
 
 ---
 
@@ -41,7 +42,9 @@ Across a 1-year benchmark simulation on `5ZoneAirCooled.idf`:
 
 ---
 
-## 📸 Screenshots & Dashboards
+## 🎥 Demo Video & Visual Dashboards
+
+> 🎬 **[Watch BuildMind 3-Minute Hackathon Demo Video](https://drive.google.com/file/d/1KOMYTi1UxVpKjpPigrWxuynFg2IXnWiX/view?usp=sharing)**
 
 <table align="center">
   <tr>
